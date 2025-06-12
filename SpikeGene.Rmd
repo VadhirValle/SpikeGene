@@ -1,0 +1,231 @@
+---
+title: "Cambios en el gen spike (S) de la variante mexicana"
+author: "José Estrada Miranda y Vadhir Valle Méndez"
+date: "2025-06-02"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(seqinr)
+
+trad =    c(UUU="F", UUC="F", UUA="L", UUG="L",
+            UCU="S", UCC="S", UCA="S", UCG="S",
+            UAU="Y", UAC="Y", UAA="STOP", UAG="STOP",
+            UGU="C", UGC="C", UGA="STOP", UGG="W",
+            CUU="L", CUC="L", CUA="L", CUG="L",
+            CCU="P", CCC="P", CCA="P", CCG="P",
+            CAU="H", CAC="H", CAA="Q", CAG="Q",
+            CGU="R", CGC="R", CGA="R", CGG="R",
+            AUU="I", AUC="I", AUA="I", AUG="M",
+            ACU="T", ACC="T", ACA="T", ACG="T",
+            AAU="N", AAC="N", AAA="K", AAG="K",
+            AGU="S", AGC="S", AGA="R", AGG="R",
+            GUU="V", GUC="V", GUA="V", GUG="V",
+            GCU="A", GCC="A", GCA="A", GCG="A",
+            GAU="D", GAC="D", GAA="E", GAG="E",
+            GGU="G", GGC="G", GGA="G", GGG="G")
+
+datos = data.frame(
+  mutacion = character(),
+  cambioCodon = character(),
+  cambioAmino = character(),
+  pos = integer(),
+  gen = character()
+)
+```
+
+```{r include=FALSE}
+file = read.fasta("sequence.txt", forceDNAtolower = FALSE)
+file2 = read.fasta("50MEXsequences.fasta", forceDNAtolower = FALSE)
+cat (length(file)%/%12, "vs", length(file2)/12, "secuencias \n")
+```
+
+## Introducción
+
+Este análisis tiene como objetivo estudiar la evolución del gen spike (S) del SARS-CoV-2 en México, enfocándonos en las mutaciones detectadas en las secuencias genéticas y los cambios en aminoácidos que podrían tener implicaciones biológicas.
+
+Se utilizó un conjunto de secuencias obtenidas en México y se compararon contra la secuencia de referencia de Wuhan para detectar mutaciones frecuentes.
+
+```{r include=FALSE}
+library(seqinr)
+library(dplyr)
+library(ggplot2)
+```
+
+## Tabla de traducción genética
+
+En esta parte nos encargamos de la transcripción, en la cual nos encargamos de traducir las bases nitrogenadas del ADN (A, T, C, G) se "transcriben" al ARN (A, U (uracilo en lugar de timina), C, G).
+
+```{r echo=TRUE}
+trad =    c(UUU="F", UUC="F", UUA="L", UUG="L",
+            UCU="S", UCC="S", UCA="S", UCG="S",
+            UAU="Y", UAC="Y", UAA="STOP", UAG="STOP",
+            UGU="C", UGC="C", UGA="STOP", UGG="W",
+            CUU="L", CUC="L", CUA="L", CUG="L",
+            CCU="P", CCC="P", CCA="P", CCG="P",
+            CAU="H", CAC="H", CAA="Q", CAG="Q",
+            CGU="R", CGC="R", CGA="R", CGG="R",
+            AUU="I", AUC="I", AUA="I", AUG="M",
+            ACU="T", ACC="T", ACA="T", ACG="T",
+            AAU="N", AAC="N", AAA="K", AAG="K",
+            AGU="S", AGC="S", AGA="R", AGG="R",
+            GUU="V", GUC="V", GUA="V", GUG="V",
+            GCU="A", GCC="A", GCA="A", GCG="A",
+            GAU="D", GAC="D", GAA="E", GAG="E",
+            GGU="G", GGC="G", GGA="G", GGG="G")
+```
+
+## Lectura de secuencias
+
+Una vez que tengamos la transcripción finalizada buscaremos cuáles son los cambios que existen entre la variante principal de Wuhan comparandola con 582 registros de la variante B.1.1.5.1.9 que fué descubierta en México.
+
+A continuación podemos observar los cambios que encontramos únicamente centrandonos en el gen S
+
+```{r include=FALSE}
+datos = data.frame(
+  mutacion = character(),
+  cambioCodon = character(),
+  cambioAmino = character(),
+  pos = integer(),
+  gen = character()
+)
+```
+
+```{r include=FALSE}
+file = read.fasta("sequence.txt", forceDNAtolower = FALSE)
+file2 = read.fasta("582MEXB11519.fasta", forceDNAtolower = FALSE)
+cat (length(file)%/%12, "vs", length(file2)/12, "secuencias \n")
+```
+
+```{r include=FALSE}
+nMut=1
+for (i in seq_along(file)){
+  if (i==2) next
+  gen = file[[i]]
+  info = attr(gen,"Annot")
+  info = unlist(strsplit(info,"\\[|\\]|:|=|\\."));
+  gene = info[which(info=="gene")+1]
+  
+  if (gene != "S") next  # 👈 FILTRA SOLO EL GEN SPIKE
+  
+  cat ("Gen",i,gene,"\n")
+  gen[which(gen=="T")]="U"
+  cat("Total de nucleótidos (Wuhan):", length(gen), "\n")
+  
+  for (j in seq(i, length(file2), 12)){
+    gen2 = file2[[j]]
+    gen2[which(gen2=="T")]="U"
+    
+    if (length(gen) == length(gen2)){
+      diff = which(gen!=gen2)
+      if (length(diff)>0){ 
+        cat("Se encontraron mutaciones en las posiciones:", diff, "\n")
+        prevMut=""
+        for (pos in diff){
+          ini = pos - (pos-1)%%3
+          mutacion = paste(gen[pos], "to", gen2[pos], sep="")
+          codOri = paste(gen[ini],gen[ini+1],gen[ini+2],sep="")
+          codMut = paste(gen2[ini],gen2[ini+1],gen2[ini+2],sep="")
+          codonChange = paste(codOri,"to",codMut,sep="")
+          nCod = ((pos-1)%/%3) + 1
+          aminoChange = paste(trad[codOri],nCod,trad[codMut],sep="")
+          if (!is.na(trad[codMut]) && trad[codOri]!=trad[codMut]
+              &&prevMut!=aminoChange){
+            cat(mutacion,codonChange, aminoChange,nCod,gene,"\n")
+            datos[nMut, ] = list(mutacion,codonChange,aminoChange, nCod, gene)
+            nMut = nMut + 1
+          }
+          prevMut = aminoChange
+        }
+      }
+    }
+  }
+}
+str(datos)
+```
+
+## Tabla de cambios
+
+Para que tengamos una mejor visión de los cambios que ocurren en el gen, podemos acomodarlos en una tabla como la que se muestra a continuación.
+
+```{r echo=FALSE}
+library(dplyr)
+
+dfgraph = filter(
+  summarise(
+    select(
+      group_by(datos, cambioAmino),
+      mutacion:gen
+    ),
+    mutacion = first(mutacion),
+    cambioCodon = first(cambioCodon),
+    pos = first(pos),
+    gen = first(gen),
+    cuenta = n()
+  ),
+  cuenta>1
+)
+
+dfgraph
+```
+
+Debido a la gran cantidad de cambios que ocurren mostraremos solamente una pequeña parte, pero si queremos observar los cambios de una manera más cómoda podemos hacerlo usando gráficas como las que se muestran a continuación.
+
+## Gráficos
+
+```{r echo=FALSE}
+p3 = ggplot(dfgraph)
+p3 = p3 + aes(x=cambioAmino, y=cuenta, fill=cambioAmino, label=cuenta)
+p3 = p3 + ggtitle("Cambio de Aminoácidos mejorada")
+p3 = p3 + labs(x="Amino", y="Frecuencia", fill="Frecuencia")
+p3 = p3 + geom_bar(stat = "identity")
+p3 = p3 + geom_text(stat = "identity", vjust=1.5)
+p3 = p3 + facet_grid(~gen, scales="free", space="free_x")
+p3
+```
+
+### Análisis de las gráficas
+
+Para este análisis nos centraremos en los 4 cambios que consideramos más importantes, los cuales son: D614G, P681H, T716 y T732A
+
+#### D614G
+
+La mutación D614G fue una de las primeras en volverse dominante a nivel mundial desde mediados de 2020. Consiste en el cambio de ácido aspártico (D) a glicina (G) en la posición 614 de la proteína Spike. Esta modificación, aunque sutil, provocó un cambio conformacional que aumentó la estabilidad del trímero Spike y facilitó una mayor afinidad por el receptor ACE2 de las células humanas. Como consecuencia, el virus con esta mutación mostró una mayor carga viral en las vías respiratorias superiores y una eficiencia de transmisión significativamente superior, sin un aumento notable en la gravedad de la enfermedad. D614G fue un parteaguas en la pandemia, ya que desplazó rápidamente a las variantes anteriores y preparó el terreno para otras mutaciones adicionales.
+
+#### P681H
+
+Otra mutación clave es P681H, que se ubica justo adyacente al sitio de escisión por furina entre las subunidades S1 y S2 del Spike. Este cambio de prolina (P) a histidina (H) mejora la eficiencia de corte por furina, lo cual acelera el proceso de entrada viral en las células. Esta mutación ha sido particularmente prevalente en variantes como Alpha (B.1.1.7) y B.1.1.519, y se ha asociado con una mayor fusión celular (formación de sincitios) y un escape parcial a ciertos mecanismos de defensa del hospedero, como las proteínas IFITM. Su presencia favoreció una mayor transmisibilidad, incluso en contextos donde ya dominaba D614G.
+
+#### T716I y T732A
+
+Las mutaciones T716I y T732A, aunque menos conocidas individualmente, son frecuentes en combinación con las anteriores y forman parte de la firma genética de variantes como Alpha y B.1.1.519. La mutación T716I sustituye una treonina por isoleucina, lo que podría modificar la flexibilidad de la región cercana al sitio de fusión con la membrana. Por su parte, T732A, que cambia treonina por alanina, puede contribuir a la estabilidad estructural del dominio S2. Ambas mutaciones, al encontrarse en regiones críticas para la fusión viral con la célula huésped, parecen contribuir a una entrada viral más eficiente. Aunque por sí solas no provocan cambios radicales, su efecto acumulativo con D614G y P681H fortalece el poder infectivo del virus.
+
+#### Impacto global y regional
+
+Estas mutaciones, especialmente en combinación, han tenido efectos visibles en la dinámica de la pandemia. En países como el Reino Unido, la variante Alpha (portadora de D614G, P681H, T716I y otras) fue responsable de una ola de contagios acelerada a finales de 2020. En México y otros países de América Latina, la variante B.1.1.519, que contiene D614G, P681H y T732A, circuló de forma dominante durante gran parte de 2021, desplazando a linajes anteriores. Estas variantes mostraron una clara ventaja evolutiva en términos de transmisión comunitaria, lo que llevó a aumentos de casos, hospitalizaciones y una presión constante sobre los sistemas de salud.
+
+Además, estas mutaciones impulsaron la necesidad de reforzar la vigilancia genómica y actualizar las vacunas para asegurar una protección más amplia, especialmente ante posibles escapes inmunes.
+
+### Bibliografía
+
+Korber, B., et al. (2020). Spike mutation D614G alters SARS-CoV-2 fitness. Nature, 582(7811), 331–335. https://doi.org/10.1038/s41586-020-2734-9
+
+Lorenzo-Redondo, R., et al. (2021). A unique clade of SARS-CoV-2 viruses associated with lower viral loads in patient upper airways. EBioMedicine, 62, 103112. https://doi.org/10.1016/j.ebiom.2020.103112
+
+Peacock, T. P., et al. (2021). The furin cleavage site in the SARS-CoV-2 spike protein is required for transmission in ferrets. Nature Microbiology, 6(7), 899–909. https://doi.org/10.1038/s41564-021-00908-w
+
+Lubinski, B., et al. (2022). P681H mutation in the spike protein enhances SARS-CoV-2 fitness. Journal of Virology, 96(6), e0249221. https://doi.org/10.1128/jvi.02492-21
+
+News-Medical. (2021). How do D614G and P681H mutations alter SARS-CoV-2 infectivity? https://www.news-medical.net/news/20210512/How-do-D614G-and-P681H-mutations-alter-SARS-CoV-2-infectivity.aspx
+
+Wikipedia contributors. (2024). SARS-CoV-2 D614G mutation. In Wikipedia. https://en.wikipedia.org/wiki/SARS-CoV-2_D614G_mutation
+
+Naveca, F. G., et al. (2021). COVID-19 epidemic in the Brazilian state of Amazonas was driven by long-term persistence of endemic lineages and the emergence of the new variant of concern P.1. Nature Medicine, 27(7), 1230–1238. https://doi.org/10.1038/s41591-021-01378-7
+
+Rodríguez-Maldonado, A. P., et al. (2021). Emergence and spread of the SARS-CoV-2 variant B.1.1.519 in Mexico. Journal of Medical Virology, 93(11), 6624–6630. https://doi.org/10.1002/jmv.27293
