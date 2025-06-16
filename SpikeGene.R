@@ -93,7 +93,7 @@ datos_filtrados <- datos %>%
          cambioAmino %in% frecuencia_amino$cambioAmino)
 
 ggplot(datos_filtrados, aes(x = mutacion)) +
-  geom_bar(fill = "darkorange") +
+  geom_bar(fill = "indianred") +
   labs(title = "A: Mutaciones de nucleótido (≥50% de las secuencias)",
        x = "Mutación",
        y = "Frecuencia") +
@@ -140,16 +140,15 @@ tabla_resumen_voc <- datos_convoc %>%
   count(cambioAmino, variante_asociada, name = "ocurrencias") %>%
   arrange(desc(ocurrencias))
 
-cat("C: Mutaciones de interés encontradas:\n")
+cat("Mutaciones de interés encontradas:\n")
 print(tabla_resumen_voc)
 
 # Paso 4: Gráfica de frecuencia de VoC (variants of concern)
 ggplot(datos_convoc, aes(x = cambioAmino, fill = variante_asociada)) +
   geom_bar() +
-  labs(title = "Mutaciones VoC en variantes mexicanas",
+  labs(title = "C: Mutaciones VoC en variantes mexicanas",
        x = "Cambio de aminoácido",
        y = "Frecuencia",
        fill = "Variante asociada") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-

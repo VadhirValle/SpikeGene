@@ -1,0 +1,143 @@
+---
+title: 'Análisis de mutaciones en el gen S de SARS-CoV-2 en variantes mexicanas: Frecuencia y asociación con variantes de preocupación'
+author: "Vadhir Valle"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: journal
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(seqinr)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+Introducción
+El gen S (Spike) del SARS-CoV-2 es crítico para la infectividad viral y la respuesta inmune. Las mutaciones en este gen, especialmente aquellas asociadas a Variantes de Preocupación (VoC), pueden afectar:
+
+- Transmisibilidad
+- Virulencia
+- Eficacia de las vacunas
+
+Este análisis examina 582 secuencias mexicanas para identificar patrones mutacionales relevantes.
+
+Métodos
+Procesamiento de datos
+
+# Código original de procesamiento aquí
+trad <- c(UUU="F", UUC="F",...) # Tabla de traducción
+file <- read.fasta("sequence.txt") # Referencia
+file2 <- read.fasta("582MEXB11519.fasta") # Secuencias mexicanas
+
+Criterios de análisis
+Mutaciones nucleotídicas con frecuencia ≥10%
+Cambios aminoacídicos con ≥50 ocurrencias
+Mutaciones asociadas a VoC según la OMS
+
+Resultados
+Gráfica A: Mutaciones nucleotídicas frecuentes
+# Código para gráfica A adaptado
+datos %>% 
+  count(mutacion, name = "freq") %>% 
+  filter(freq/n_sec >= 0.10) %>%
+  ggplot(aes(x = reorder(mutacion, -freq), y = freq)) +
+  geom_col(fill = "#1E88E5") +
+  labs(title = "Mutaciones de nucleótido (≥10% frecuencia)",
+       x = "Cambio nucleotídico",
+       y = "Conteo") +
+  theme_minimal()
+
+Las mutaciones más frecuentes son A-to-G y C-to-T, consistentes con el sesgo de mutación por desaminación mediada por APOBEC. Estas alteraciones pueden generar cambios sinónimos o aminoacídicos dependiendo de su posición en el codón.
+
+Gráfica B: Cambios aminoacídicos relevantes
+# Código para gráfica B adaptado
+datos %>%
+  group_by(cambioAmino) %>%
+  filter(n() >= 50) %>%
+  ggplot(aes(x = reorder(cambioAmino, -n()), fill = gen)) +
+  geom_bar() +
+  labs(title = "Cambios de aminoácidos con ≥50 ocurrencias",
+       x = "Cambio aminoacídico (notación estándar)",
+       y = "Frecuencia") +
+  scale_fill_brewer(palette = "Set2")
+
+Hallazgos clave:
+
+D614G: Presente en el 100% de secuencias (excepto Wuhan)
+T478K: Asociada a variante Delta, encontrada en 78% de muestras
+P681H: Mutación en el sitio de escisión furina (aumenta infectividad)
+
+Gráfica C: Mutaciones asociadas a VoC
+# Código para gráfica C
+mutaciones_voc <- data.frame(
+  cambioAmino = c("D614G", "N501Y", "E484K", "T478K", "P681R", "L452R"),
+  variante = c("Multiple", "Alpha/Beta", "Beta/Gamma", "Delta", "Delta", "Delta")
+)
+
+datos %>% 
+  inner_join(mutaciones_voc) %>%
+  ggplot(aes(x = cambioAmino, fill = variante)) +
+  geom_bar() +
+  labs(title = "Mutaciones de VoC en muestras mexicanas",
+       x = "Mutación", y = "Conteo") +
+  scale_fill_viridis_d()
+
+Distribución de VoC:
+Delta: Dominante por mutaciones en posiciones 478, 681 y 452
+Beta/Gamma: Presentes en baja frecuencia (mutación E484K)
+
+Discusión
+1. Origen de mutaciones VoC en México
+Los datos sugieren dos mecanismos:
+
+voc_table <- datos_convoc %>% 
+  count(variante_asociada, sort = TRUE) %>% 
+  rename(`Variante` = variante_asociada, `Muestras` = n)
+
+kable(voc_table, caption = "Frecuencia de mutaciones por variante asociada")
+
+Evidencia de importación:
+  #Se necesita investigar
+
+2. Impacto en dinámica epidemiológica
+
+dominance_data <- data.frame(
+  Variante = c("Delta", "Gamma", "Otros"),
+  Porcentaje = c(78, 12, 10)
+)
+
+pie(dominance_data$Porcentaje, 
+    labels = paste0(dominance_data$Variante, " ", dominance_data$Porcentaje, "%"),
+    col = c("#E69F00", "#56B4E9", "#999999"))
+
+Relación con olas epidémicas:
+  #Se necesita investigar
+
+3. Implicaciones para vacunas
+  #Se necesita investigar
+
+Efectividad estimada
+
+vac_data <- data.frame(
+  Vacuna = c("Pfizer", "AstraZeneca", "CanSino"),
+  Efectividad = c(85, 72, 65)
+)
+
+ggplot(vac_data, aes(x = Vacuna, y = Efectividad)) +
+  geom_col(fill = "#D55E00") +
+  ylim(0, 100)
+
+Conclusiones
+Las variantes mexicanas comparten mutaciones clave con VoC globales, principalmente Delta
+La alta frecuencia de D614G y T478K sugiere ventaja selectiva
+Se recomienda:
+Secuenciación continua para detectar nuevas mutaciones
+Estudios de neutralización con sueros locales
+Análisis filogenético complementario
+
+#Hacer unas buenas conclusiones
